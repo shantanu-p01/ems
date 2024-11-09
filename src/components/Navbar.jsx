@@ -1,125 +1,58 @@
 import { HiMenu } from "react-icons/hi";
 import { useState, useEffect } from "react";
-import { useLocation, NavLink } from "react-router-dom"; // Import NavLink from react-router-dom
+import { useLocation, NavLink } from "react-router-dom";
 
 const Navbar = () => {
-  // State to track if the drawer is open or closed
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  // Function to toggle the drawer visibility
-  const toggleDrawer = () => {
-    setIsDrawerOpen(!isDrawerOpen);
-  };
-
-  // Function to close the drawer
-  const closeDrawer = () => {
-    setIsDrawerOpen(false);
-  };
-
-  // Get the current location (path) from react-router-dom
   const location = useLocation();
 
-  // Check if the current path matches a specific route
-  const isHomePage = location.pathname === "/";
-  const isDashboardPage = location.pathname === "/dashboard";
-  const isContactPage = location.pathname === "/contact";
+  // Function to toggle the drawer visibility
+  const toggleDrawer = () => setIsDrawerOpen(prev => !prev);
+
+  // Function to close the drawer
+  const closeDrawer = () => setIsDrawerOpen(false);
+
+  // Helper function to determine if a link is active
+  const isActive = (path) => location.pathname === path ? "scale-110 text-yellow-500" : "text-white";
 
   // When the drawer is open, disable body scrolling
   useEffect(() => {
-    if (isDrawerOpen) {
-      document.body.style.overflow = "hidden"; // Disable scrolling
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth", // Scroll smoothly to the top
-      });
-    } else {
-      document.body.style.overflow = "auto"; // Enable scrolling again
-    }
-    return () => {
-      document.body.style.overflow = "auto"; // Ensure scrolling is enabled when component unmounts
-    };
+    document.body.style.overflow = isDrawerOpen ? "hidden" : "auto";
+    if (isDrawerOpen) window.scrollTo({ top: 0, behavior: "smooth" });
+    return () => document.body.style.overflow = "auto";
   }, [isDrawerOpen]);
 
   return (
     <>
       <header className="fixed w-screen h-16 select-none z-10">
         <nav className="w-full bg-slate-500 h-16 px-4 md:pr-8 flex items-center justify-between">
-          {/* Nav Left */}
-          <div className="w-fit">
-            <h1 className="p-2 rounded-lg text-4xl transition-all duration-300 hover:scale-110 cursor-pointer">EMS</h1>
+          {/* Left side (logo) */}
+          <h1 className="p-2 rounded-lg text-4xl transition-all duration-300 hover:scale-110 cursor-pointer">EMS</h1>
+
+          {/* Right side (desktop links) */}
+          <div className="hidden md:flex items-center justify-evenly gap-4 text-lg">
+            {["/", "/dashboard", "/contact"].map(path => (
+              <NavLink key={path} to={path} className={`transition-all capitalize duration-300 cursor-pointer hover:font-semibold ${isActive(path)}`}>
+                {path === "/" ? "Home" : path.slice(1)}
+              </NavLink>
+            ))}
           </div>
 
-          {/* Nav Right PC */}
-          <div className="w-fit hidden md:flex items-center justify-evenly gap-4 text-lg">
-            {/* Use NavLink for active link styling */}
-            <NavLink
-              to="/"
-              className={`transition-all duration-300 cursor-pointer hover:font-semibold ${
-                isHomePage ? "scale-110 text-yellow-500" : "text-white"
-              }`}
-            >
-              Home
-            </NavLink>
-            <NavLink
-              to="/dashboard"
-              className={`transition-all duration-300 cursor-pointer hover:font-semibold ${
-                isDashboardPage ? "scale-110 text-yellow-500" : "text-white"
-              }`}
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/contact"
-              className={`transition-all duration-300 cursor-pointer hover:font-semibold ${
-                isContactPage ? "scale-110 text-yellow-500" : "text-white"
-              }`}
-            >
-              Contact
-            </NavLink>
-          </div>
-
-          {/* Nav Left Mobile */}
-          <div className="w-fit md:hidden">
-            <HiMenu size="34" onClick={toggleDrawer} className="cursor-pointer" />
-          </div>
+          {/* Mobile menu button */}
+          <HiMenu size="34" onClick={toggleDrawer} className="cursor-pointer md:hidden" />
         </nav>
       </header>
 
-      {/* Drawer */}
-      {/* Overlay that is only visible when the drawer is open */}
-      {isDrawerOpen && (
-        <div
-          className="fixed select-none top-0 left-0 w-full h-full bg-black bg-opacity-50 backdrop-blur-sm md:hidden"
-          onClick={toggleDrawer} // Close the drawer when clicking outside
-        />
-      )}
+      {/* Drawer overlay */}
+      {isDrawerOpen && <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 backdrop-blur-sm md:hidden" onClick={toggleDrawer} />}
 
-      {/* Drawer */}
-      <div
-        className={`md:hidden fixed top-0 left-0 w-64 h-full bg-slate-700 text-white p-8 transform transition-transform duration-300 flex items-start flex-col pt-20 gap-5 ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        {/* Use NavLink for active link styling */}
-        <NavLink
-          to="/"
-          className={`cursor-pointer ${isHomePage ? "scale-110 text-yellow-500" : "text-white"}`}
-          onClick={closeDrawer} // Close drawer when link is clicked
-        >
-          Home
-        </NavLink>
-        <NavLink
-          to="/dashboard"
-          className={`cursor-pointer ${isDashboardPage ? "scale-110 text-yellow-500" : "text-white"}`}
-          onClick={closeDrawer} // Close drawer when link is clicked
-        >
-          Dashboard
-        </NavLink>
-        <NavLink
-          to="/contact"
-          className={`cursor-pointer ${isContactPage ? "scale-110 text-yellow-500" : "text-white"}`}
-          onClick={closeDrawer} // Close drawer when link is clicked
-        >
-          Contact
-        </NavLink>
+      {/* Drawer menu */}
+      <div className={`md:hidden fixed top-0 left-0 w-64 h-full bg-slate-700 text-white p-8 transform transition-transform duration-300 flex items-start flex-col pt-20 gap-5 ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {["/", "/dashboard", "/contact"].map(path => (
+          <NavLink key={path} to={path} className={`cursor-pointer capitalize ${isActive(path)}`} onClick={closeDrawer}>
+            {path === "/" ? "Home" : path.slice(1)}
+          </NavLink>
+        ))}
       </div>
     </>
   );

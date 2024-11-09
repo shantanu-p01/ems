@@ -10,53 +10,37 @@ import ErrorPage from './pages/ErrorPage.jsx';
 
 function App() {
   const [loading, setLoading] = useState(false);
-  const location = useLocation(); // to detect route changes
+  const location = useLocation();
 
-  // Handle scroll restoration (for backward navigation)
   useEffect(() => {
-    window.history.scrollRestoration = 'manual';
-  }, []);
+    window.history.scrollRestoration = 'manual'; // Disable default scroll restoration
 
-  // Add or remove 'no-scroll' class when loading state changes
-  useEffect(() => {
-    if (loading) {
-      document.body.classList.add("no-scroll", "pr-3");
-    } else {
-      document.body.classList.remove("no-scroll", "pr-3");
-    }
-  }, [loading]);
+    const handleLoadingState = () => {
+      setLoading(true);
+      document.body.style.overflow = 'hidden'; // Prevent scrolling while loading
+      document.body.style.paddingRight = '16px'; // Adjust for scrollbar width
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // Whenever the route changes, set loading to true and scroll to the top smoothly
-  useEffect(() => {
-    setLoading(true);
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'  // This ensures smooth scrolling to the top
-    });
-  }, [location]);
-
-  // Simulate page loading time with a timeout, then hide the loader
-  useEffect(() => {
-    if (loading) {
       const timer = setTimeout(() => {
         setLoading(false);
-      }, 1000); // Simulate a loading time of 1 second (adjust as needed)
+        document.body.style.overflow = 'auto'; // Restore normal scroll
+        document.body.style.paddingRight = '0';
+      }, 1000); // Simulate 1-second loading time
+
       return () => clearTimeout(timer);
-    }
-  }, [loading]);
+    };
+
+    handleLoadingState();
+  }, [location]);
 
   return (
     <>
       <Navbar />
-      
-      {/* Show the loader when loading */}
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
           <BarLoader width={100} color="#ffffff" />
         </div>
       )}
-
-      {/* Render the routes */}
       <div className={loading ? "invisible" : ""}>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -65,7 +49,6 @@ function App() {
           <Route path="*" element={<ErrorPage />} />
         </Routes>
       </div>
-
       <Footer />
     </>
   );

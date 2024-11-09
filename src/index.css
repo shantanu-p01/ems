@@ -25,7 +25,3 @@
 body {
   font-family: 'MonoFont', sans-serif;
 }
-
-.no-scroll {
-  overflow: hidden;
-}
