@@ -6,6 +6,9 @@ const ErrorPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+
+    document.title = "Error 404!";
+
     // Redirect to homepage when count reaches 0
     if (count === 0) {
       navigate("/");

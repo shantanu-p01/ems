@@ -18,10 +18,34 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'MonoFont';
+  font-family: 'MonoFont-Regular';
   src: url('./fonts/SpaceMono-Regular.ttf') ;
 }
 
+@font-face {
+  font-family: 'MonoFont-Bold';
+  src: url('./fonts/SpaceMono-Bold.ttf') ;
+}
+
+@font-face {
+  font-family: 'MonoFont-Italic';
+  src: url('./fonts/SpaceMono-Italic.ttf') ;
+}
+
 body {
-  font-family: 'MonoFont', sans-serif;
+  font-family: 'MonoFont-Regular', sans-serif;
+}
+
+.MonoBold {
+  font-family: 'MonoFont-Bold', sans-serif;
+}
+
+.MonoItalic {
+  font-family: 'MonoFont-Italic', sans-serif;
+}
+
+*, *::after, *::before {
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-app-region: no-drag;    
 }
