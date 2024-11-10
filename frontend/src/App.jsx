@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import BarLoader from "react-spinners/BarLoader";
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import Navbar from './components/Navbar.jsx';
+import Footer from './components/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
