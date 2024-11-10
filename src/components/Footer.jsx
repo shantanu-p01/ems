@@ -90,7 +90,7 @@ const Footer = () => {
 
       {/* Footer Bottom Text */}
       <div className="text-center text-sm">
-        <p>&#169; 2024 Employee Management System. All Rights Reserved.</p>
+        <p>&#169;2024 Employee Management System. All Rights Reserved.</p>
       </div>
 
       {/* Conditionally Render Modals */}
