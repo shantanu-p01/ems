@@ -12,6 +12,8 @@ const HomePage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mongodbUrl, setMongodbUrl] = useState(Cookies.get('mongodbUrl') || '');
   const [passphrase, setPassphrase] = useState('');
+
+  const SERVER_ADDRESS = "https://ems-backendservice.onrender.com";
   
   useEffect(() => {
     document.title = "Employee Management System";
@@ -48,7 +50,7 @@ const HomePage = () => {
       console.log('Sending user data:', userData);
   
       // Correct API URL with the right backend address
-      const response = await axios.post('/api/register', userData);
+      const response = await axios.post(`${SERVER_ADDRESS}/api/register`, userData);
       console.log(response.data);
       if (response.data.success) {
         alert('Account created successfully!');

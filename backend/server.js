@@ -8,9 +8,12 @@ const cors = require('cors');
 dotenv.config();
 const app = express();
 
-// Middleware to allow requests from frontend
+// Retrieve the allowed origin from environment variables
+const allowedOrigin = process.env.ALLOWED_ORIGIN;
+
+// Middleware to allow requests only from the specified origin
 app.use(cors({
-  origin: 'http://localhost:5173', // Specify frontend origin
+  origin: allowedOrigin,
   methods: ['GET', 'POST'],
 }));
 
@@ -34,8 +37,6 @@ const User = mongoose.model('User', userSchema);
 
 // Register route to handle user registration
 app.post('/api/register', async (req, res) => {
-  console.log('Received request body:', req.body);
-
   try {
     const { name, email, password, mongodbUrl } = req.body;
 

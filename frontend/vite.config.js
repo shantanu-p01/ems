@@ -8,9 +8,9 @@ dotenv.config()
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: {
-    proxy: {
-      '/api': process.env.VITE_SERVER_ADDRESS, // Use SERVER_ADDRESS from .env
-    },
-  },
+  // server: {
+  //   proxy: {
+  //     '/api': process.env.REACT_APP_SERVER_ADDRESS, // Use SERVER_ADDRESS from .env
+  //   },
+  // },
 })
