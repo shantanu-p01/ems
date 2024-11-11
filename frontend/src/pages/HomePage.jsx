@@ -36,15 +36,12 @@ const HomePage = () => {
 
       if (response.data.success) {
         alert('Account registered successfully!');
-        
         Cookies.set('mongodbUrl', encryptedUrl, { expires: 365, secure: true });
         Cookies.set('email', email, { expires: 365, secure: true });
-
         resetForm();
       }
     } catch (error) {
-      console.error('Account registration error:', error);
-      alert(error.response?.data?.message || 'An error occurred');
+      alert(error.response?.data?.error || 'An error occurred');
     }
   };
 
@@ -53,11 +50,10 @@ const HomePage = () => {
       const response = await axios.post(`${SERVER_ADDRESS}/api/login`, { email, password });
       if (response.data.success) {
         Cookies.set('token', response.data.token);
-        alert('Login successful!');
+        alert('Logged in successfully!');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      alert(error.response?.data?.message || 'Invalid credentials');
+      alert(error.response?.data?.error || 'Invalid credentials');
     }
   };
 
@@ -80,7 +76,7 @@ const HomePage = () => {
       setPassphrase('');
     } else if (formStep === 1) {
       setEmail(Cookies.get('email') || ''); // Prepopulate email in login form
-      setPassword('')
+      setPassword('');
     }
   }, [formStep]);
 
