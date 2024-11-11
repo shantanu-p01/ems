@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const os = require('os');
 
 dotenv.config();
 const app = express();
@@ -21,7 +22,7 @@ app.use(bodyParser.json());
 
 const MONGO_URI = process.env.MONGO_URI;
 
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("Error connecting to MongoDB:", err));
 
@@ -70,8 +71,22 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// Utility to get the machine’s local IP address
+const getLocalIP = () => {
+  const interfaces = os.networkInterfaces();
+  for (const iface of Object.values(interfaces)) {
+    for (const details of iface) {
+      if (details.family === 'IPv4' && !details.internal) {
+        return details.address; // Returns the first non-internal IPv4 address
+      }
+    }
+  }
+  return 'localhost';
+};
+
 // Start the server
 const PORT = process.env.PORT || 5174;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  const ipAddress = getLocalIP();
+  console.log(`Server running on: \nhttp://localhost:${PORT} \nhttp://${ipAddress}:${PORT}`);
 });

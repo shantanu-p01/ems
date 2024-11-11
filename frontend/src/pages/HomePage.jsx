@@ -5,93 +5,84 @@ import Auth from '../components/Auth.jsx';
 import axios from 'axios';
 
 const HomePage = () => {
-  // Start with form step 1 (login) instead of registration
+  const SERVER_ADDRESS = "https://ems-backendservice.onrender.com"; // Update to production URL as needed
   const [formStep, setFormStep] = useState(1);
-  const [name, setName] = useState(Cookies.get('name') || '');
-  const [email, setEmail] = useState(Cookies.get('email') || '');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [mongodbUrl, setMongodbUrl] = useState(Cookies.get('mongodbUrl') || '');
+  const [mongodbUrl, setMongodbUrl] = useState('');
   const [passphrase, setPassphrase] = useState('');
-
-  const SERVER_ADDRESS = "https://ems-backendservice.onrender.com";
-  // const SERVER_ADDRESS = "http://localhost:5174";
 
   useEffect(() => {
     document.title = "Employee Management System";
   }, []);
 
-  const encryptMongodbUrl = (url, passphrase) => CryptoJS.AES.encrypt(url, passphrase).toString();
-  const decryptMongodbUrl = (encryptedUrl, passphrase) => {
+  const encrypt = (text, passphrase) => CryptoJS.AES.encrypt(text, passphrase).toString();
+  const decrypt = (encryptedText, passphrase) => {
     try {
-      return CryptoJS.AES.decrypt(encryptedUrl, passphrase).toString(CryptoJS.enc.Utf8);
+      return CryptoJS.AES.decrypt(encryptedText, passphrase).toString(CryptoJS.enc.Utf8);
     } catch (error) {
-      console.error('Error decrypting MongoDB URL:', error);
+      console.error('Decryption error:', error);
       return '';
     }
   };
 
-  const nextStep = () => {
-    if (formStep === 2) {
-      Cookies.set('name', name);
-      Cookies.set('email', email);
-    } else if (formStep === 4) {
-      const encryptedUrl = encryptMongodbUrl(mongodbUrl, passphrase);
-      Cookies.set('mongodbUrl', encryptedUrl);
-      Cookies.set('passphrase', passphrase);
-    }
-    setFormStep(prev => prev + 1);
-  };
-
-  const prevStep = () => setFormStep(prev => prev - 1);
-
-  const validateStep = (step) => {
-    if (step === 2) return name.trim() && email.trim();
-    if (step === 3) return password === confirmPassword && password.trim();
-    if (step === 4) return mongodbUrl.trim() && passphrase.trim();
-    return false;
-  };
-
-  const handleCreateAccount = async () => {
+  const handleRegister = async () => {
     try {
-      const encryptedUrl = encryptMongodbUrl(mongodbUrl, passphrase);
+      const encryptedUrl = encrypt(mongodbUrl, passphrase);
       const userData = { name, email, password, mongodbUrl: encryptedUrl };
-
       const response = await axios.post(`${SERVER_ADDRESS}/api/register`, userData);
-      
+
       if (response.data.success) {
-        alert('Account created successfully!');
-        // Reset form and go back to login
-        setFormStep(1);
-        setPassword('');
-        setConfirmPassword('');
-        setMongodbUrl('');
-        setPassphrase('');
+        alert('Account registered successfully!');
+        
+        Cookies.set('mongodbUrl', encryptedUrl, { expires: 365, secure: true });
+        Cookies.set('email', email, { expires: 365, secure: true });
+
+        resetForm();
       }
     } catch (error) {
-      console.error('Error during account creation:', error);
-      alert(error.response?.data?.message || 'An error occurred while creating the account');
+      console.error('Account registration error:', error);
+      alert(error.response?.data?.message || 'An error occurred');
     }
   };
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${SERVER_ADDRESS}/api/login`, {
-        email,
-        password
-      });
-
+      const response = await axios.post(`${SERVER_ADDRESS}/api/login`, { email, password });
       if (response.data.success) {
-        // Handle successful login (e.g., store token, redirect)
         Cookies.set('token', response.data.token);
         alert('Login successful!');
-        // Add your redirect logic here
       }
     } catch (error) {
-      console.error('Error during login:', error);
-      alert(error.response?.data?.message || 'Invalid email or password');
+      console.error('Login error:', error);
+      alert(error.response?.data?.message || 'Invalid credentials');
     }
   };
+
+  const resetForm = () => {
+    setFormStep(1);
+    setName('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setMongodbUrl('');
+    setPassphrase('');
+  };
+
+  useEffect(() => {
+    if (formStep === 2) {
+      setEmail(''); // Clear email on registration form
+      setPassword('');
+      setConfirmPassword('');
+      setMongodbUrl('');
+      setPassphrase('');
+    } else if (formStep === 1) {
+      setEmail(Cookies.get('email') || ''); // Prepopulate email in login form
+      setPassword('')
+    }
+  }, [formStep]);
 
   return (
     <main className="min-h-screen min-w-full flex flex-col items-center pt-20 pb-10 bg-gray-900 text-gray-200">
@@ -102,22 +93,22 @@ const HomePage = () => {
         </div>
         <div className="w-full sm:w-1/2 bg-gray-700 rounded-lg shadow-md">
           <Auth
-            formStep={formStep}
-            setFormStep={setFormStep}
-            name={name}
-            setName={setName}
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            confirmPassword={confirmPassword}
-            setConfirmPassword={setConfirmPassword}
-            mongodbUrl={mongodbUrl}
-            setMongodbUrl={setMongodbUrl}
+            formStep={formStep} setFormStep={setFormStep}
+            name={name} setName={setName}
+            email={email} setEmail={setEmail}
+            password={password} setPassword={setPassword}
+            confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword}
+            mongodbUrl={mongodbUrl} setMongodbUrl={setMongodbUrl}
             passphrase={passphrase} setPassphrase={setPassphrase}
-            nextStep={nextStep} prevStep={prevStep} 
-            validateStep={validateStep} 
-            handleCreateAccount={handleCreateAccount} 
+            nextStep={() => setFormStep(prev => prev + 1)}
+            prevStep={() => setFormStep(prev => prev - 1)}
+            validateStep={(step) =>
+              step === 2 ? name && email :
+              step === 3 ? password && password === confirmPassword :
+              step === 4 ? mongodbUrl && passphrase : false
+            }
+            handleRegister={handleRegister}
+            handleLogin={handleLogin}
           />
         </div>
       </section>
