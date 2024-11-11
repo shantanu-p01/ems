@@ -4,19 +4,20 @@ const bcrypt = require('bcryptjs');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const os = require('os');
+const moment = require('moment-timezone');
+const axios = require('axios'); // Import axios for making HTTP requests
 
 dotenv.config();
 const app = express();
+const JWT_SECRET = process.env.JWT_SECRET; // Set this in your .env file
 
-// Middleware to allow requests from the specified origin
-const allowedOrigin = process.env.ALLOWED_ORIGIN;
-app.use(cors({ origin: allowedOrigin, methods: ['GET', 'POST'] }));
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN, methods: ['GET', 'POST'] }));
 app.use(bodyParser.json());
 
-// MongoDB URI from environment
-const MONGO_URI = process.env.MONGO_URI;
-mongoose.connect(MONGO_URI)
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("Error connecting to MongoDB:", err));
 
@@ -25,7 +26,12 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, unique: true, required: true },
   password: { type: String, required: true },
-  mongodbUrl: { type: String, required: true }, // Encrypted MongoDB URL
+  mongodbUrl: { type: String, required: true },
+  loginToken: { type: String, default: null },
+  loginStatus: { type: Boolean, default: false },
+  last_logged_in_on: { type: Object, default: null }, // Store time in both IST and GMT
+  login_times: { type: Number, default: 0 },
+  last_logged_in_ip: { type: String, default: null } // Store the user's public IP
 });
 
 const User = mongoose.model('User', userSchema);
@@ -42,29 +48,113 @@ app.post('/api/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ name, email, password: hashedPassword, mongodbUrl });
     await newUser.save();
-    res.status(200).json({ success: true, message: 'User registered successfully!' });
-  } catch (error) {
-    console.error('Error registering user:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(201).json({ success: true, message: 'User registered successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
+// Utility to fetch public IP using ipfy
+const getPublicIP = async () => {
+  try {
+    const response = await axios.get('https://api.ipify.org?format=json');
+    return response.data.ip;
+  } catch (error) {
+    console.error('Error fetching public IP:', error);
+    return null; // Return null if the IP cannot be fetched
+  }
+};
+
 // Login route
 app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(400).json({ success: false, error: 'Invalid credentials' });
+  }
+
+  const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
+  user.loginToken = token;
+  user.loginStatus = true;
+  user.login_times += 1; // Increment login count
+
+  // Get current time in IST and GMT formats
+  const istTime = moment().tz("Asia/Kolkata").format("DD-MMM-YYYY HH:mm:ss");
+  const gmtTime = moment().tz("GMT").format("DD-MMM-YYYY HH:mm:ss");
+
+  // Get user's public IP address
+  const publicIP = await getPublicIP();
+
+  // Update the user's last login details
+  user.last_logged_in_on = {
+    IST: istTime,
+    GMT: gmtTime
+  };
+  user.last_logged_in_ip = publicIP;
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Login successful',
+    token,
+    name: user.name,
+  });
+});
+
+// Logout route
+app.post('/api/logout', async (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(400).json({ error: 'No token provided' });
+
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId);
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-    // Return success with token (simulated here)
-    const token = 'dummy-jwt-token'; // Replace with actual JWT logic
-    res.status(200).json({ success: true, token });
+    user.loginToken = null;
+    user.loginStatus = false;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+});
+
+app.post('/api/verify-token', async (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    if (user.loginToken !== token) {
+      return res.status(401).json({ success: false, error: 'Token mismatch' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Token is valid',
+      token,
+      name: user.name
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
   }
 });
 
@@ -79,7 +169,7 @@ const getLocalIP = () => {
     }
   }
   return 'localhost';
-};
+}
 
 const PORT = process.env.PORT || 5174;
 app.listen(PORT, '0.0.0.0', () => {
