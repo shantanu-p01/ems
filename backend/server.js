@@ -31,7 +31,9 @@ const userSchema = new mongoose.Schema({
   loginStatus: { type: Boolean, default: false },
   last_logged_in_on: { type: Object, default: null }, // Store time in both IST and GMT
   login_times: { type: Number, default: 0 },
-  last_logged_in_ip: { type: String, default: null } // Store the user's public IP
+  last_logged_in_ip: { type: String, default: null }, // Store the user's public IP
+  position: { type: String, default: '' }, // New field
+  bio: { type: String, default: '' }       // New field
 });
 
 const User = mongoose.model('User', userSchema);
@@ -155,6 +157,67 @@ app.post('/api/verify-token', async (req, res) => {
     });
   } catch (error) {
     return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+});
+
+// Profile route - Fetch user profile details
+app.get('/api/profile', async (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId, 'name email position bio'); // Select specific fields
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      profile: {
+        name: user.name,
+        email: user.email,
+        position: user.position,
+        bio: user.bio
+      }
+    });
+  } catch (error) {
+    res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+});
+
+// Update profile route - Update user profile details
+app.post('/api/updateProfile', async (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { name, position, bio } = req.body; // Exclude email from being updated
+
+    // Find user and update profile fields
+    const updatedUser = await User.findByIdAndUpdate(
+      decoded.userId,
+      { name, position, bio },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      profile: {
+        name: updatedUser.name,
+        position: updatedUser.position,
+        bio: updatedUser.bio
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: 'Profile update failed' });
   }
 });
 
