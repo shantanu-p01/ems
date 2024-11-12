@@ -7,7 +7,9 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const os = require('os');
 const moment = require('moment-timezone');
-const axios = require('axios'); // Import axios for making HTTP requests
+const axios = require('axios');
+const fileUpload = require('express-fileupload'); // Middleware for file uploads
+const FormData = require('form-data'); // Import FormData for multipart uploads
 
 dotenv.config();
 const app = express();
@@ -15,6 +17,7 @@ const JWT_SECRET = process.env.JWT_SECRET; // Set this in your .env file
 
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN, methods: ['GET', 'POST'] }));
 app.use(bodyParser.json());
+app.use(fileUpload()); // Enable file uploads
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -32,8 +35,9 @@ const userSchema = new mongoose.Schema({
   last_logged_in_on: { type: Object, default: null }, // Store time in both IST and GMT
   login_times: { type: Number, default: 0 },
   last_logged_in_ip: { type: String, default: null }, // Store the user's public IP
-  position: { type: String, default: '' }, // New field
-  bio: { type: String, default: '' }       // New field
+  position: { type: String, default: '' },
+  bio: { type: String, default: '' },
+  profileImageUrl: { type: String, default: '' } // Profile Image Field
 });
 
 const User = mongoose.model('User', userSchema);
@@ -56,14 +60,14 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Utility to fetch public IP using ipfy
+// Utility to fetch public IP using ipify
 const getPublicIP = async () => {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
     return response.data.ip;
   } catch (error) {
     console.error('Error fetching public IP:', error);
-    return null; // Return null if the IP cannot be fetched
+    return null;
   }
 };
 
@@ -84,20 +88,13 @@ app.post('/api/login', async (req, res) => {
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
   user.loginToken = token;
   user.loginStatus = true;
-  user.login_times += 1; // Increment login count
+  user.login_times += 1;
 
-  // Get current time in IST and GMT formats
   const istTime = moment().tz("Asia/Kolkata").format("DD-MMM-YYYY HH:mm:ss");
   const gmtTime = moment().tz("GMT").format("DD-MMM-YYYY HH:mm:ss");
-
-  // Get user's public IP address
   const publicIP = await getPublicIP();
 
-  // Update the user's last login details
-  user.last_logged_in_on = {
-    IST: istTime,
-    GMT: gmtTime
-  };
+  user.last_logged_in_on = { IST: istTime, GMT: gmtTime };
   user.last_logged_in_ip = publicIP;
 
   await user.save();
@@ -167,7 +164,7 @@ app.get('/api/profile', async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.userId, 'name email position bio'); // Select specific fields
+    const user = await User.findById(decoded.userId, 'name email position bio profileImageUrl');
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
@@ -179,7 +176,8 @@ app.get('/api/profile', async (req, res) => {
         name: user.name,
         email: user.email,
         position: user.position,
-        bio: user.bio
+        bio: user.bio,
+        profileImage: user.profileImageUrl
       }
     });
   } catch (error) {
@@ -187,16 +185,15 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
-// Update profile route - Update user profile details
+// Update profile route
 app.post('/api/updateProfile', async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const { name, position, bio } = req.body; // Exclude email from being updated
+    const { name, position, bio } = req.body;
 
-    // Find user and update profile fields
     const updatedUser = await User.findByIdAndUpdate(
       decoded.userId,
       { name, position, bio },
@@ -218,6 +215,44 @@ app.post('/api/updateProfile', async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ success: false, error: 'Profile update failed' });
+  }
+});
+
+// Upload profile image route
+app.post('/api/uploadImage', async (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    if (!req.files || !req.files.image) return res.status(400).json({ success: false, error: 'No image uploaded' });
+
+    // Create a FormData instance and append the file with correct options
+    const formData = new FormData();
+    formData.append('image', req.files.image.data.toString("base64"));
+
+    // Set the header to specify form-data
+    const imgbbResponse = await axios.post(
+      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`, 
+      formData, 
+      { headers: formData.getHeaders() }
+    );
+
+    const imageUrl = imgbbResponse.data.data.url;
+    user.profileImageUrl = imageUrl; // Update user's profile image URL in the database
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Image uploaded successfully',
+      imageUrl,
+    });
+  } catch (error) {
+    console.error('Image upload failed:', error);
+    res.status(500).json({ success: false, error: 'Image upload failed' });
   }
 });
 

@@ -50,22 +50,38 @@ const ProfilePage = () => {
 
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file && (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/gif")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, profileImage: reader.result });
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append("image", file); // 'image' must match the server's `req.files.image`
+  
+      try {
+        const response = await axios.post(`${SERVER_ADDRESS}/api/uploadImage`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${Cookies.get("token")}`,
+          },
+        });
+  
+        if (response.data.success) {
+          setFormData({ ...formData, profileImage: response.data.imageUrl });
+          setFormStatus("Image uploaded successfully!");
+        } else {
+          setFormStatus("Failed to upload image.");
+        }
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        setFormStatus("Error uploading image.");
+      }
     } else {
-      setFormStatus('Please select a valid image (JPG, PNG, or GIF).');
+      setFormStatus("Please select a valid image (JPG, PNG, or GIF).");
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name) return setFormStatus('Name is required.');
+    // if (!formData.name) return setFormStatus('Name is required.');
     if (JSON.stringify(formData) === JSON.stringify(originalData)) return setFormStatus('You have not updated any fields.');
 
     const token = Cookies.get('token');
