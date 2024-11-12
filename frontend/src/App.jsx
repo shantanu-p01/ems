@@ -5,7 +5,7 @@ import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
-import ContactPage from './pages/ContactPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
 import ErrorPage from './pages/ErrorPage.jsx';
 
 function App() {
@@ -45,7 +45,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
       </div>

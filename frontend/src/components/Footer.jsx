@@ -31,7 +31,7 @@ const Footer = () => {
 
   // Links and modals mapping
   const footerLinks = [
-    { text: 'Contact', href: '/contact' },
+    // { text: 'Contact', href: '/contact' },
     { text: 'About', modal: 'about' },
     { text: 'Privacy Policy', modal: 'privacy' },
     { text: 'Terms of Service', modal: 'terms' }

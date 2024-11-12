@@ -27,12 +27,11 @@ const Navbar = () => {
       <header className="fixed w-screen h-16 select-none z-10">
         <nav className="w-full bg-[#212121] h-16 px-4 sm:pr-8 flex items-center justify-between">
           {/* Left side (logo) */}
-          {/* <h1 className="p-2 MonoBold rounded-lg text-4xl transition-all duration-300 hover:scale-110 cursor-pointer">E-M-S</h1> */}
           <h1 className="p-2 MonoBold rounded-lg text-4xl transition-all duration-300 hover:scale-110 cursor-pointer">E-M-S</h1>
 
           {/* Right side (desktop links) */}
           <div className="hidden sm:flex items-center justify-evenly gap-4 text-lg">
-            {["/", "/dashboard", "/contact"].map(path => (
+            {["/", "/dashboard", "/profile"].map(path => (
               <NavLink key={path} to={path} className={`transition-all capitalize duration-300 cursor-pointer hover:font-semibold ${isActive(path)}`}>
                 {path === "/" ? "Home" : path.slice(1)}
               </NavLink>
@@ -49,7 +48,7 @@ const Navbar = () => {
 
       {/* Drawer menu */}
       <div className={`sm:hidden fixed top-0 left-0 w-64 h-full bg-slate-700 text-white p-8 transform transition-transform duration-300 flex items-start flex-col pt-20 gap-5 ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        {["/", "/dashboard", "/contact"].map(path => (
+        {["/", "/dashboard", "/profile"].map(path => (
           <NavLink key={path} to={path} className={`cursor-pointer capitalize ${isActive(path)}`} onClick={closeDrawer}>
             {path === "/" ? "Home" : path.slice(1)}
           </NavLink>
