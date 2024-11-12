@@ -3,6 +3,7 @@ import Cookies from 'js-cookie';
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 import Auth from '../components/Auth.jsx';
+import MessageModal from './../modals/MessageModal';
 
 const HomePage = () => {
   const SERVER_ADDRESS = "https://ems-backendservice.onrender.com"; // Update to production URL as needed
@@ -15,6 +16,7 @@ const HomePage = () => {
   const [passphrase, setPassphrase] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);  // Loading state for token verification
+  const [message, setMessage] = useState('');  // State for message modal
 
   useEffect(() => {
     const token = Cookies.get('token');
@@ -31,7 +33,7 @@ const HomePage = () => {
         } else {
           setIsLoggedIn(true);
           setEmail(Cookies.get('email') || '');
-  
+
           // Update the 'name' field in cookies or set it if it doesn't exist
           Cookies.set('name', response.data.name, { expires: 7, secure: true });
           setName(response.data.name);  // Update the state with the name
@@ -69,13 +71,12 @@ const HomePage = () => {
       const response = await axios.post(`${SERVER_ADDRESS}/api/register`, userData);
 
       if (response.data.success) {
-        alert('Account registered successfully!');
-        // Cookies.set('mongodbUrl', encryptedUrl, { expires: 7, secure: true });
+        setMessage('Account registered successfully!');
         Cookies.set('email', email, { expires: 7, secure: true });
         resetForm();
       }
     } catch (error) {
-      alert(error.response?.data?.error || 'An error occurred');
+      setMessage(error.response?.data?.error || 'An error occurred');
     }
   };
 
@@ -88,10 +89,10 @@ const HomePage = () => {
         Cookies.set('name', response.data.name, { expires: 7, secure: true }); // Set cookies to expire in 7 days
         setIsLoggedIn(true);  // Set logged in status
         setName(response.data.name); // Set name after login
-        alert('Logged in successfully!');
+        setMessage('Logged in successfully!');
       }
     } catch (error) {
-      alert(error.response?.data?.error || 'Invalid credentials');
+      setMessage(error.response?.data?.error || 'Invalid credentials');
     }
   };
 
@@ -109,9 +110,9 @@ const HomePage = () => {
       setIsLoggedIn(false); // Set logged out status
       setEmail('');
       setName('');
-      alert('Logged out successfully!');
+      setMessage('Logged out successfully!');
     } catch (error) {
-      alert('Error logging out');
+      setMessage('Error logging out');
     }
   };
 
@@ -192,11 +193,13 @@ const HomePage = () => {
                   step === 4 ? mongodbUrl && passphrase : false
                 }
               />
-
             )}
           </div>
         </section>
       )}
+
+      {/* Message Modal to display messages */}
+      <MessageModal message={message} onClose={() => setMessage('')} />
     </main>
   );
 };

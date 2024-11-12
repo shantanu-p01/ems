@@ -30,6 +30,9 @@ const DashboardPage = () => {
       .catch(() => {
         // Verification failed, start logout and countdown
         setShowRedirectMessage(true);
+        Cookies.remove('token'); 
+        Cookies.remove('email'); 
+        Cookies.remove('name'); 
       });
     } else {
       // No token found, show redirect message

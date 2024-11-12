@@ -1,27 +1,89 @@
 import { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
+import axios from 'axios';
+import MessageModal from './../modals/MessageModal';
+
+const SERVER_ADDRESS = "https://ems-backendservice.onrender.com"; // Update to production URL as needed
 
 const ProfilePage = () => {
   const [formData, setFormData] = useState({
-    name: 'John Doe', // Placeholder values, replace with fetched data as needed
-    email: 'johndoe@example.com',
-    position: 'Software Engineer',
-    bio: 'Enthusiastic developer with a passion for learning and problem-solving.'
+    name: '',
+    email: '',
+    position: '',
+    bio: ''
+  });
+  const [editableFields, setEditableFields] = useState({
+    name: false,
+    position: false,
+    bio: false,
+  });
+  const [formStatus, setFormStatus] = useState('');
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [showRedirectMessage, setShowRedirectMessage] = useState(false);
+  const [originalData, setOriginalData] = useState({
+    name: '',
+    email: '',
+    position: '',
+    bio: ''
   });
 
-  const [formStatus, setFormStatus] = useState('');
-
   useEffect(() => {
-    // Set the document title when the component mounts
     document.title = 'EMS - Profile';
 
-    // Fetch profile data from an API or database here
-    // For example:
-    // axios.get('/api/profile').then(response => {
-    //   setFormData(response.data);
-    // });
+    const token = Cookies.get('token');
+
+    if (token) {
+      axios.get(`${SERVER_ADDRESS}/api/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(response => {
+          if (response.data.success) {
+            // If profile data is fetched successfully, update form data
+            const profile = response.data.profile;
+            setFormData({
+              name: profile.name || '',
+              email: profile.email || '',
+              position: profile.position || '',
+              bio: profile.bio || ''
+            });
+            setOriginalData({
+              name: profile.name || '',
+              email: profile.email || '',
+              position: profile.position || '',
+              bio: profile.bio || ''
+            });
+          } else {
+            setShowRedirectMessage(true);
+            Cookies.remove('token'); 
+            Cookies.remove('email'); 
+            Cookies.remove('name'); 
+          }
+        })
+        .catch(() => {
+          setShowRedirectMessage(true);
+        });
+    } else {
+      setShowRedirectMessage(true);
+    }
   }, []);
 
-  // Handle input changes
+  useEffect(() => {
+    let countdownInterval;
+    if (showRedirectMessage) {
+      countdownInterval = setInterval(() => {
+        setRedirectCountdown((prevCountdown) => {
+          if (prevCountdown <= 1) {
+            clearInterval(countdownInterval);
+            Cookies.remove('token');
+            window.location.replace('/');
+          }
+          return prevCountdown - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(countdownInterval);
+  }, [showRedirectMessage]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -30,36 +92,82 @@ const ProfilePage = () => {
     }));
   };
 
-  // Form submission
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Simple validation
-    if (!formData.name || !formData.email || !formData.position) {
-      setFormStatus('Please fill in all required fields.');
+    // Check if any field has been modified
+    if (
+      formData.name === originalData.name &&
+      formData.position === originalData.position &&
+      formData.bio === originalData.bio
+    ) {
+      setFormStatus('You have not updated any fields.');
       return;
     }
 
-    // Simulate saving data (replace with actual API call)
-    setTimeout(() => {
-      setFormStatus('Profile updated successfully!');
-      // API call to save data:
-      // axios.post('/api/profile', formData)
-      //   .then(() => setFormStatus('Profile updated successfully!'))
-      //   .catch(() => setFormStatus('Error updating profile.'));
-    }, 1000);
+    if (!formData.name) {
+      setFormStatus('Name is required.');
+      return;
+    }
+
+    const token = Cookies.get('token');
+    if (token) {
+      axios.post(`${SERVER_ADDRESS}/api/updateProfile`, {
+        name: formData.name,
+        position: formData.position,
+        bio: formData.bio
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(response => {
+          if (response.data.success) {
+            setFormStatus('Profile updated successfully!');
+            // After saving, disable editing and revert buttons to 'Edit'
+            setEditableFields({
+              name: false,
+              position: false,
+              bio: false
+            });
+            // Update the original data after successful save
+            setOriginalData(formData);
+          } else {
+            setFormStatus('Failed to update profile.');
+          }
+        })
+        .catch(() => {
+          setFormStatus('Error updating profile.');
+        });
+    }
+  };
+
+  const handleFieldEdit = (field) => {
+    setEditableFields((prev) => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-[#212121] p-5 pt-20">
-      <div className="max-w-lg w-full bg-[#212121] p-4 rounded shadow-lg">
-        <h1 className="text-3xl font-semibold text-center mb-6 text-white">Profile</h1>
-
-        {formStatus && <p className="text-center mb-4 text-green-500">{formStatus}</p>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-200">Name</label>
+    <div className={`min-h-screen flex flex-col items-center justify-center p-5 ${!showRedirectMessage ? 'pt-20' : ''}`}>
+      {showRedirectMessage ? (
+        <div className="text-center text-white">
+          <p>User not logged in. Redirecting to homepage in {redirectCountdown}...</p>
+        </div>
+      ) : (
+        <div className="max-w-lg w-full bg-[#212121] p-4 rounded shadow-lg">
+          <h1 className="text-3xl font-semibold text-center mb-6 text-white">Profile</h1>
+          <form onSubmit={handleSubmit}>
+            {/* Name Field */}
+            <div className="mt-4 flex items-center justify-between">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-200">Name</label>
+              <button
+                type="button"
+                onClick={() => handleFieldEdit('name')}
+                className={`focus:outline-none ${editableFields.name ? 'text-red-500 hover:text-red-600' : 'text-blue-500'} hover:text-blue-700`}
+              >
+                {editableFields.name ? 'Cancel' : 'Edit'}
+              </button>
+            </div>
             <input
               type="text"
               id="name"
@@ -69,25 +177,33 @@ const ProfilePage = () => {
               className="w-full p-2 border border-gray-300 rounded-md"
               placeholder="Your full name"
               required
+              disabled={!editableFields.name}
             />
-          </div>
 
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-200">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="Your email address"
-              required
-            />
-          </div>
+            {/* Email Field - Non-editable */}
+            <div className="mt-4">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-200">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                className="w-full p-2 border border-gray-300 rounded-md cursor-not-allowed"
+                disabled
+              />
+            </div>
 
-          <div className="mb-4">
-            <label htmlFor="position" className="block text-sm font-medium text-gray-200">Position</label>
+            {/* Position Field */}
+            <div className="mt-4 flex items-center justify-between">
+              <label htmlFor="position" className="block text-sm font-medium text-gray-200">Position</label>
+              <button
+                type="button"
+                onClick={() => handleFieldEdit('position')}
+                className={`focus:outline-none ${editableFields.position ? 'text-red-500 hover:text-red-600' : 'text-blue-500'} hover:text-blue-700`}
+              >
+                {editableFields.position ? 'Cancel' : 'Edit'}
+              </button>
+            </div>
             <input
               type="text"
               id="position"
@@ -95,34 +211,46 @@ const ProfilePage = () => {
               value={formData.position}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="Your position or job title"
-              required
+              placeholder={formData.position ? '' : 'Add Position'}
+              disabled={!editableFields.position}
             />
-          </div>
 
-          <div className="mb-6">
-            <label htmlFor="bio" className="block text-sm font-medium text-gray-200">Bio</label>
+            {/* Bio Field */}
+            <div className="mt-4 flex items-center justify-between">
+              <label htmlFor="bio" className="block text-sm font-medium text-gray-200">Bio</label>
+              <button
+                type="button"
+                onClick={() => handleFieldEdit('bio')}
+                className={`focus:outline-none ${editableFields.bio ? 'text-red-500 hover:text-red-600' : 'text-blue-500'} hover:text-blue-700`}
+              >
+                {editableFields.bio ? 'Cancel' : 'Edit'}
+              </button>
+            </div>
             <textarea
               id="bio"
               name="bio"
               value={formData.bio}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="Tell us a little about yourself"
+              placeholder={formData.bio ? '' : 'Add Bio'}
               rows="5"
+              disabled={!editableFields.bio}
             ></textarea>
-          </div>
 
-          <div className="text-center">
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-700"
-            >
-              Save Profile
-            </button>
-          </div>
-        </form>
-      </div>
+            <div className="text-center">
+              <button
+                type="submit"
+                className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-700"
+              >
+                Save Profile
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Message Modal */}
+      <MessageModal message={formStatus} onClose={() => setFormStatus('')} />
     </div>
   );
 };
