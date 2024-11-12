@@ -70,8 +70,8 @@ const HomePage = () => {
 
       if (response.data.success) {
         alert('Account registered successfully!');
-        Cookies.set('mongodbUrl', encryptedUrl, { expires: 365, secure: true });
-        Cookies.set('email', email, { expires: 365, secure: true });
+        // Cookies.set('mongodbUrl', encryptedUrl, { expires: 7, secure: true });
+        Cookies.set('email', email, { expires: 7, secure: true });
         resetForm();
       }
     } catch (error) {

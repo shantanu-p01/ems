@@ -1,17 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 const ErrorPage = () => {
   const [count, setCount] = useState(5);
-  const navigate = useNavigate();
 
   useEffect(() => {
-
     document.title = "Error 404!";
 
     // Redirect to homepage when count reaches 0
     if (count === 0) {
-      navigate("/");
+      window.location.replace("/"); // Use window.location.replace instead of navigate
     } else {
       // Start the countdown when component mounts
       const timer = setInterval(() => {
@@ -21,7 +18,7 @@ const ErrorPage = () => {
       // Cleanup timer when component unmounts or countdown finishes
       return () => clearInterval(timer);
     }
-  }, [count, navigate]);
+  }, [count]);
 
   return (
     <main className="min-h-screen min-w-full flex flex-col items-center justify-center gap-5">
