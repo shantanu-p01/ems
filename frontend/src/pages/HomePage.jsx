@@ -4,6 +4,7 @@ import CryptoJS from 'crypto-js';
 import axios from 'axios';
 import Auth from '../components/Auth.jsx';
 import MessageModal from './../modals/MessageModal';
+import BarLoader from "react-spinners/BarLoader";
 
 const HomePage = () => {
   const SERVER_ADDRESS = "https://ems-backendservice.onrender.com"; // Update to production URL as needed
@@ -34,16 +35,15 @@ const HomePage = () => {
           setIsLoggedIn(true);
           setEmail(Cookies.get('email') || '');
 
-          // Update the 'name' field in cookies or set it if it doesn't exist
-          Cookies.set('name', response.data.name, { expires: 7, secure: true });
-          setName(response.data.name);  // Update the state with the name
+          // Update cookies to expire in 1 hour
+          Cookies.set('name', response.data.name, { expires: 1 / 24, secure: true });
+          setName(response.data.name);
         }
       })
       .catch(() => {
-        // On failure, remove all related cookies
-        Cookies.remove('token'); 
-        Cookies.remove('email'); 
-        Cookies.remove('name'); 
+        Cookies.remove('token');
+        Cookies.remove('email');
+        Cookies.remove('name');
       })
       .finally(() => {
         setLoading(false);  // Stop loading once verification is done
@@ -84,9 +84,9 @@ const HomePage = () => {
     try {
       const response = await axios.post(`${SERVER_ADDRESS}/api/login`, { email, password });
       if (response.data.success) {
-        Cookies.set('token', response.data.token, { expires: 7, secure: true });  // Set cookies to expire in 7 days
-        Cookies.set('email', email, { expires: 7, secure: true });  // Set cookies to expire in 7 days
-        Cookies.set('name', response.data.name, { expires: 7, secure: true }); // Set cookies to expire in 7 days
+        Cookies.set('token', response.data.token, { expires: 1 / 24, secure: true }); // Set token to expire in 1 hour
+        Cookies.set('email', email, { expires: 1 / 24, secure: true }); // Set email to expire in 1 hour
+        Cookies.set('name', response.data.name, { expires: 1 / 24, secure: true }); // Set name to expire in 1 hour
         setIsLoggedIn(true);  // Set logged in status
         setName(response.data.name); // Set name after login
         setMessage('Logged in successfully!');
@@ -142,7 +142,9 @@ const HomePage = () => {
   return (
     <main className="min-h-screen min-w-full flex flex-col items-center pt-20 pb-10 bg-gray-900 text-gray-200">
       {loading ? (
-        <div className="text-center text-white">Loading...</div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+          <BarLoader width={100} color="#ffffff" />
+        </div>
       ) : (
         <section className="w-11/12 sm:w-4/5 bg-gray-800 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between mb-12 shadow-lg">
           {/* Conditionally render Welcome or User Details */}

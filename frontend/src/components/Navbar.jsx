@@ -24,7 +24,7 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="fixed w-screen h-16 select-none z-10">
+      <header className="fixed z-20 w-screen h-16 select-none">
         <nav className="w-full bg-[#212121] h-16 px-4 sm:pr-8 flex items-center justify-between">
           {/* Left side (logo) */}
           <h1 className="p-2 MonoBold rounded-lg text-4xl transition-all duration-300 hover:scale-110 cursor-pointer">E-M-S</h1>
@@ -44,10 +44,10 @@ const Navbar = () => {
       </header>
 
       {/* Drawer overlay */}
-      {isDrawerOpen && <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 backdrop-blur-sm sm:hidden" onClick={toggleDrawer} />}
+      {isDrawerOpen && <div className="fixed z-10 top-0 left-0 w-full h-full bg-black bg-opacity-50 backdrop-blur-sm sm:hidden" onClick={toggleDrawer} />}
 
       {/* Drawer menu */}
-      <div className={`sm:hidden fixed top-0 left-0 w-64 h-full bg-slate-700 text-white p-8 transform transition-transform duration-300 flex items-start flex-col pt-20 gap-5 ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`sm:hidden z-10 fixed top-0 left-0 w-64 h-full bg-slate-700 text-white p-8 transform transition-transform duration-300 flex items-start flex-col pt-20 gap-5 ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {["/", "/dashboard", "/profile"].map(path => (
           <NavLink key={path} to={path} className={`cursor-pointer capitalize ${isActive(path)}`} onClick={closeDrawer}>
             {path === "/" ? "Home" : path.slice(1)}

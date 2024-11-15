@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import axios from 'axios';
+import BarLoader from "react-spinners/BarLoader"; // Import the loader
 
 const SERVER_ADDRESS = "https://ems-backendservice.onrender.com"; // Update to production URL as needed
 
 const DashboardPage = () => {
+  const [loading, setLoading] = useState(true); // Loading state for API call
   const [redirectCountdown, setRedirectCountdown] = useState(5); // Countdown starts at 5
   const [showRedirectMessage, setShowRedirectMessage] = useState(false);
 
   useEffect(() => {
-    // Set the document title when the component mounts
     document.title = "EMS - DashBoard";
-
     const token = Cookies.get('token');
 
     if (token) {
@@ -20,23 +20,21 @@ const DashboardPage = () => {
       })
       .then(response => {
         if (response.data.token !== token) {
-          // Tokens don't match, start logout and countdown
           setShowRedirectMessage(true);
         } else {
-          // Tokens match, set the name in the cookie and allow access to the dashboard
           Cookies.set('name', response.data.name, { expires: 7, secure: true });
         }
       })
       .catch(() => {
-        // Verification failed, start logout and countdown
         setShowRedirectMessage(true);
-        Cookies.remove('token'); 
-        Cookies.remove('email'); 
-        Cookies.remove('name'); 
-      });
+        Cookies.remove('token');
+        Cookies.remove('email');
+        Cookies.remove('name');
+      })
+      .finally(() => setLoading(false)); // End loading after API response
     } else {
-      // No token found, show redirect message
       setShowRedirectMessage(true);
+      setLoading(false); // End loading if token not found
     }
   }, []);
 
@@ -48,10 +46,9 @@ const DashboardPage = () => {
         setRedirectCountdown((prevCountdown) => {
           if (prevCountdown <= 1) {
             clearInterval(countdownInterval);
-            // Clear cookies and redirect to homepage
-            Cookies.remove('token'); 
-            Cookies.remove('email'); 
-            Cookies.remove('name'); 
+            Cookies.remove('token');
+            Cookies.remove('email');
+            Cookies.remove('name');
             window.location.replace('/');  // Redirect to homepage
           }
           return prevCountdown - 1;
@@ -64,7 +61,11 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen min-w-full flex items-center justify-center">
-      {showRedirectMessage ? (
+      {loading ? (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+          <BarLoader width={100} color="#ffffff" />
+        </div>
+      ) : showRedirectMessage ? (
         <div className="text-center text-white">
           <p>User not logged in. Redirecting to homepage in {redirectCountdown}...</p>
         </div>
