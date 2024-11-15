@@ -19,23 +19,28 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);  // Loading state for token verification
   const [message, setMessage] = useState('');  // State for message modal
 
+  const getPublicIP = async () => {
+    try {
+      const response = await axios.get('https://api.ipify.org?format=json');
+      return response.data.ip;
+    } catch (error) {
+      console.error('Error fetching public IP:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const token = Cookies.get('token');
-    // console.log('Token found in cookies:', token);  // Tp Debugging line
     if (token) {
       axios.post(`${SERVER_ADDRESS}/api/verify-token`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(response => {
-        // Check if the token from the database matches the token from the cookie
         if (response.data.token !== token) {
-          // If the tokens don't match, log the user out
           handleLogout();
         } else {
           setIsLoggedIn(true);
           setEmail(Cookies.get('email') || '');
-
-          // Update cookies to expire in 1 hour
           Cookies.set('name', response.data.name, { expires: 1 / 24, secure: true });
           setName(response.data.name);
         }
@@ -46,13 +51,33 @@ const HomePage = () => {
         Cookies.remove('name');
       })
       .finally(() => {
-        setLoading(false);  // Stop loading once verification is done
+        setLoading(false);
       });
     } else {
       setIsLoggedIn(false);
       setLoading(false);
     }
   }, []);
+  
+  const handleLogin = async () => {
+    const publicIP = await getPublicIP(); // Fetch the user's public IP
+    try {
+      const response = await axios.post(`${SERVER_ADDRESS}/api/login`, 
+        { email, password }, 
+        { headers: { 'X-Public-IP': publicIP } }  // Send the public IP in the header
+      );
+      if (response.data.success) {
+        Cookies.set('token', response.data.token, { expires: 1 / 24, secure: true });
+        Cookies.set('email', email, { expires: 1 / 24, secure: true });
+        Cookies.set('name', response.data.name, { expires: 1 / 24, secure: true });
+        setIsLoggedIn(true);
+        setName(response.data.name);
+        setMessage('Logged in successfully!');
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Invalid credentials');
+    }
+  };
 
   const encrypt = (text, passphrase) => CryptoJS.AES.encrypt(text, passphrase).toString();
   const decrypt = (encryptedText, passphrase) => {
@@ -77,22 +102,6 @@ const HomePage = () => {
       }
     } catch (error) {
       setMessage(error.response?.data?.error || 'An error occurred');
-    }
-  };
-
-  const handleLogin = async () => {
-    try {
-      const response = await axios.post(`${SERVER_ADDRESS}/api/login`, { email, password });
-      if (response.data.success) {
-        Cookies.set('token', response.data.token, { expires: 1 / 24, secure: true }); // Set token to expire in 1 hour
-        Cookies.set('email', email, { expires: 1 / 24, secure: true }); // Set email to expire in 1 hour
-        Cookies.set('name', response.data.name, { expires: 1 / 24, secure: true }); // Set name to expire in 1 hour
-        setIsLoggedIn(true);  // Set logged in status
-        setName(response.data.name); // Set name after login
-        setMessage('Logged in successfully!');
-      }
-    } catch (error) {
-      setMessage(error.response?.data?.error || 'Invalid credentials');
     }
   };
 

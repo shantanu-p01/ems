@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
   loginToken: { type: String, default: null },
   loginStatus: { type: Boolean, default: false },
   tokenExpiration: {
-    type: Object, // Store token expiration in both IST and GMT
+    type: Object, // Store token expiration in both IST and UTC
     default: null,
   },
   last_logged_in_on: { type: Object, default: null },
@@ -47,44 +47,51 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Utility to fetch public IP using ipify
-const getPublicIP = async () => {
-  try {
-    const response = await axios.get('https://api.ipify.org?format=json');
-    return response.data.ip;
-  } catch (error) {
-    console.error('Error fetching public IP:', error);
-    return null;
-  }
+// Helper function to get formatted login time and token expiration for multiple time zones
+const getLoginTimesAndExpiration = (now) => {
+  const timeZones = [
+    { zone: "Asia/Kolkata", label: "IST" },
+    { zone: "UTC", label: "UTC" }
+  ];
+
+  let loginTimes = {};
+  let tokenExpirations = {};
+
+  timeZones.forEach(({ zone, label }) => {
+    const loginTime = now.tz(zone);
+    const tokenExpiration = loginTime.clone().add(1, 'hour');
+
+    loginTimes[label] = loginTime.format("DD-MMM-YYYY HH:mm:ss");
+    tokenExpirations[label] = tokenExpiration.format("DD-MMM-YYYY HH:mm:ss");
+  });
+
+  return { loginTimes, tokenExpirations };
 };
 
 // Login route
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  const publicIP = req.headers['x-public-ip']; // Extract public IP from the header
 
-  if (!user) {
-    return res.status(404).json({ success: false, error: 'User not found' });
-  }
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
   const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    return res.status(400).json({ success: false, error: 'Invalid credentials' });
-  }
+  if (!isMatch) return res.status(400).json({ success: false, error: 'Invalid credentials' });
 
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
+  const now = moment();  // Get the current time
 
-  const now = moment();
-  const istTime = now.tz("Asia/Kolkata").add(1, 'hour').format("DD-MMM-YYYY HH:mm:ss");
-  const gmtTime = now.tz("GMT").add(1, 'hour').format("DD-MMM-YYYY HH:mm:ss");
-  const publicIP = await getPublicIP();
+  // Get login times and token expiration for multiple time zones
+  const { loginTimes, tokenExpirations } = getLoginTimesAndExpiration(now);
 
+  // Save to the user object
   user.loginToken = token;
   user.loginStatus = true;
-  user.tokenExpiration = { IST: istTime, GMT: gmtTime }; // Set expiration in both time zones
+  user.tokenExpiration = tokenExpirations;
   user.login_times += 1;
-  user.last_logged_in_on = { IST: istTime, GMT: gmtTime };
-  user.last_logged_in_ip = publicIP;
+  user.last_logged_in_on = loginTimes;
+  user.last_logged_in_ip = publicIP; // Store the user's public IP
 
   await user.save();
 
@@ -98,10 +105,10 @@ app.post('/api/login', async (req, res) => {
 
 // Middleware to clear expired tokens
 cron.schedule('*/5 * * * *', async () => {
-  const nowGMT = moment().tz("GMT").format("DD-MMM-YYYY HH:mm:ss");
+  const nowIST = moment().tz("Asia/Kolkata").format("DD-MMM-YYYY HH:mm:ss");
 
   const expiredUsers = await User.find({
-    "tokenExpiration.GMT": { $lt: nowGMT },
+    "tokenExpiration.IST": { $lt: nowIST },
     loginToken: { $ne: null },
   });
 
@@ -230,26 +237,24 @@ app.post('/api/uploadImage', async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.userId);
-    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+  const user = await User.findOne({ loginToken: token });
+  if (!user) return res.status(401).json({ success: false, error: 'User not found' });
 
+  try {
     if (!req.files || !req.files.image) return res.status(400).json({ success: false, error: 'No image uploaded' });
 
-    // Create a FormData instance and append the file with correct options
+    const image = req.files.image;
     const formData = new FormData();
-    formData.append('image', req.files.image.data.toString("base64"));
+    formData.append('image', image.data, image.name);
 
-    // Set the header to specify form-data
     const imgbbResponse = await axios.post(
-      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`, 
-      formData, 
+      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+      formData,
       { headers: formData.getHeaders() }
     );
 
     const imageUrl = imgbbResponse.data.data.url;
-    user.profileImageUrl = imageUrl; // Update user's profile image URL in the database
+    user.profileImageUrl = imageUrl;
     await user.save();
 
     res.status(200).json({
@@ -260,6 +265,22 @@ app.post('/api/uploadImage', async (req, res) => {
   } catch (error) {
     console.error('Image upload failed:', error);
     res.status(500).json({ success: false, error: 'Image upload failed' });
+  }
+});
+
+// Register route
+app.post('/api/register', async (req, res) => {
+  try {
+    const { name, email, password, mongodbUrl } = req.body;
+    if (!name || !email || !password || !mongodbUrl) return res.status(400).json({ error: 'All fields are required' });
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'Email already registered' });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashedPassword, mongodbUrl });
+    await newUser.save();
+    res.status(201).json({ success: true, message: 'User registered successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
