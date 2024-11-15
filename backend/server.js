@@ -10,7 +10,7 @@ const moment = require('moment-timezone');
 const axios = require('axios');
 const fileUpload = require('express-fileupload');
 const FormData = require('form-data');
-const cron = require('node-cron'); // Add cron for background tasks
+const cron = require('node-cron');
 
 dotenv.config();
 const app = express();
@@ -33,34 +33,19 @@ const userSchema = new mongoose.Schema({
   mongodbUrl: { type: String, required: true },
   loginToken: { type: String, default: null },
   loginStatus: { type: Boolean, default: false },
-  tokenExpiration: { type: Date, default: null }, // Add token expiration field
-  last_logged_in_on: { type: Object, default: null }, // Store time in both IST and GMT
+  tokenExpiration: {
+    type: Object, // Store token expiration in both IST and GMT
+    default: null,
+  },
+  last_logged_in_on: { type: Object, default: null },
   login_times: { type: Number, default: 0 },
-  last_logged_in_ip: { type: String, default: null }, // Store the user's public IP
+  last_logged_in_ip: { type: String, default: null },
   position: { type: String, default: '' },
   bio: { type: String, default: '' },
-  profileImageUrl: { type: String, default: '' } // Profile Image Field
+  profileImageUrl: { type: String, default: '' },
 });
 
 const User = mongoose.model('User', userSchema);
-
-// Register route
-app.post('/api/register', async (req, res) => {
-  try {
-    const { name, email, password, mongodbUrl } = req.body;
-    if (!name || !email || !password || !mongodbUrl) return res.status(400).json({ error: 'All fields are required' });
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: 'Email already registered' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, email, password: hashedPassword, mongodbUrl });
-    await newUser.save();
-    res.status(201).json({ success: true, message: 'User registered successfully' });
-  } catch (err) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
 
 // Utility to fetch public IP using ipify
 const getPublicIP = async () => {
@@ -88,15 +73,16 @@ app.post('/api/login', async (req, res) => {
   }
 
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-  user.loginToken = token;
-  user.loginStatus = true;
-  user.tokenExpiration = moment().add(1, 'hour').toDate(); // Store token expiration time
-  user.login_times += 1;
 
-  const istTime = moment().tz("Asia/Kolkata").format("DD-MMM-YYYY HH:mm:ss");
-  const gmtTime = moment().tz("GMT").format("DD-MMM-YYYY HH:mm:ss");
+  const now = moment();
+  const istTime = now.tz("Asia/Kolkata").add(1, 'hour').format("DD-MMM-YYYY HH:mm:ss");
+  const gmtTime = now.tz("GMT").add(1, 'hour').format("DD-MMM-YYYY HH:mm:ss");
   const publicIP = await getPublicIP();
 
+  user.loginToken = token;
+  user.loginStatus = true;
+  user.tokenExpiration = { IST: istTime, GMT: gmtTime }; // Set expiration in both time zones
+  user.login_times += 1;
   user.last_logged_in_on = { IST: istTime, GMT: gmtTime };
   user.last_logged_in_ip = publicIP;
 
@@ -112,8 +98,12 @@ app.post('/api/login', async (req, res) => {
 
 // Middleware to clear expired tokens
 cron.schedule('*/5 * * * *', async () => {
-  const now = new Date();
-  const expiredUsers = await User.find({ tokenExpiration: { $lt: now }, loginToken: { $ne: null } });
+  const nowGMT = moment().tz("GMT").format("DD-MMM-YYYY HH:mm:ss");
+
+  const expiredUsers = await User.find({
+    "tokenExpiration.GMT": { $lt: nowGMT },
+    loginToken: { $ne: null },
+  });
 
   expiredUsers.forEach(async (user) => {
     user.loginToken = null;
