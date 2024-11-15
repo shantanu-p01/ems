@@ -173,15 +173,20 @@ app.post('/api/verify-token', async (req, res) => {
 
 // Profile route - Fetch user profile details
 app.get('/api/profile', async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
+  const token = req.headers['authorization']?.split(' ')[1]; // Token from the request
   if (!token) return res.status(401).json({ success: false, error: 'Token not found' });
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.userId, 'name email position bio profileImageUrl');
+    const decoded = jwt.verify(token, JWT_SECRET); // Decode the JWT token
+    const user = await User.findById(decoded.userId, 'name email position bio profileImageUrl loginToken'); // Fetch the user with loginToken
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Compare the token from the request with the loginToken from the database
+    if (user.loginToken !== token) {
+      return res.status(401).json({ success: false, error: 'Token mismatch. Redirecting to homepage...' });
     }
 
     res.status(200).json({

@@ -19,13 +19,14 @@ const ProfilePage = () => {
   useEffect(() => {
     document.title = 'EMS - Profile';
     const token = Cookies.get('token');
-
+    
     if (!token) {
       setShowRedirectMessage(true);
       setLoading(false); // End loading if no token
       return;
     }
-
+  
+    // Fetch profile data
     axios.get(`${SERVER_ADDRESS}/api/profile`, { headers: { Authorization: `Bearer ${token}` } })
       .then(response => {
         const profile = response.data.profile;
@@ -33,34 +34,48 @@ const ProfilePage = () => {
           setFormData(profile);
           setOriginalData(profile);
         } else {
-          setShowRedirectMessage(true);
+          // If the response is not successful, handle logout
+          handleLogout();
         }
       })
-      .catch(() => setShowRedirectMessage(true))
+      .catch((error) => {
+        // console.error("Error fetching profile:", error);
+        if (error.response && error.response.data.error === 'Token mismatch. Redirecting to homepage...') {
+          // Token mismatch, handle redirect
+          setShowRedirectMessage(true);
+          setLoading(false);
+          handleLogout();
+        } else {
+          setShowRedirectMessage(true);
+          handleLogout();
+        }
+      })
       .finally(() => setLoading(false)); // End loading after API response
   }, []);
 
   useEffect(() => {
     if (showRedirectMessage) {
       const countdownInterval = setInterval(() => {
-        setRedirectCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            handleLogout();
+        setRedirectCountdown((prev) => {
+          const newCountdown = prev > 1 ? prev - 1 : 0;
+          if (newCountdown === 0) {
+            clearInterval(countdownInterval); // Stop the countdown interval
+            window.location.replace('/'); // Redirect to homepage
           }
-          return prev - 1;
+          return newCountdown;
         });
       }, 1000);
-
+  
       return () => clearInterval(countdownInterval);
     }
-  }, [showRedirectMessage]);
+  }, [showRedirectMessage]);  
 
   const handleLogout = () => {
     Cookies.remove('token');
     Cookies.remove('email');
     Cookies.remove('name');
-    window.location.replace('/');
+    setShowRedirectMessage(true);
+    setLoading(false); // Stop loading before redirect
   };
 
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
