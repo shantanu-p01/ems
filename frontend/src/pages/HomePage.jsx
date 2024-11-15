@@ -17,6 +17,7 @@ const HomePage = () => {
   const [passphrase, setPassphrase] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);  // Loading state for token verification
+  const [loadingState, setLoadingState] = useState(false); // Loading for login/logout actions
   const [message, setMessage] = useState('');  // State for message modal
 
   const getPublicIP = async () => {
@@ -60,6 +61,7 @@ const HomePage = () => {
   }, []);
   
   const handleLogin = async () => {
+    setLoadingState(true); // Show loader
     const publicIP = await getPublicIP(); // Fetch the user's public IP
     try {
       const response = await axios.post(`${SERVER_ADDRESS}/api/login`, 
@@ -76,6 +78,8 @@ const HomePage = () => {
       }
     } catch (error) {
       setMessage(error.response?.data?.error || 'Invalid credentials');
+    } finally {
+      setLoadingState(false); // Hide loader
     }
   };
 
@@ -90,6 +94,7 @@ const HomePage = () => {
   };
 
   const handleRegister = async () => {
+    setLoadingState(true); // Show loader
     try {
       const encryptedUrl = encrypt(mongodbUrl, passphrase);
       const userData = { name, email, password, mongodbUrl: encryptedUrl };
@@ -102,10 +107,17 @@ const HomePage = () => {
       }
     } catch (error) {
       setMessage(error.response?.data?.error || 'An error occurred');
+    } finally {
+      setLoadingState(false); // Hide loader
     }
   };
+  
+  
+
+
 
   const handleLogout = async () => {
+    setLoadingState(true); // Show loader
     try {
       const token = Cookies.get('token');
       if (token) {
@@ -122,6 +134,8 @@ const HomePage = () => {
       setMessage('Logged out successfully!');
     } catch (error) {
       setMessage('Error logging out');
+    } finally {
+      setLoadingState(false); // Hide loader
     }
   };
 
@@ -150,13 +164,16 @@ const HomePage = () => {
 
   return (
     <main className="min-h-screen min-w-full flex flex-col items-center pt-20 pb-10 bg-gray-900 text-gray-200">
-      {loading ? (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+      {/* Show loader during login/logout/register */}
+      {(loading || loadingState) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center backdrop-blur-sm">
           <BarLoader width={100} color="#ffffff" />
         </div>
-      ) : (
+      )}
+      
+      {/* Main Content */}
+      {!loading && !loadingState && (
         <section className="w-11/12 sm:w-4/5 bg-gray-800 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between mb-12 shadow-lg">
-          {/* Conditionally render Welcome or User Details */}
           <div className="sm:w-1/2 text-center sm:text-left mb-6 sm:mb-0">
             {isLoggedIn ? (
               <>
@@ -176,9 +193,8 @@ const HomePage = () => {
             )}
           </div>
 
-          {/* Conditionally render Auth component or welcome message based on login status */}
           <div className="w-full sm:w-1/2 bg-gray-700 rounded-lg shadow-md">
-            {isLoggedIn ? null : (
+            {!isLoggedIn && (
               <Auth
                 formStep={formStep} 
                 setFormStep={setFormStep}
@@ -194,7 +210,7 @@ const HomePage = () => {
                 setMongodbUrl={setMongodbUrl}
                 passphrase={passphrase} 
                 setPassphrase={setPassphrase}
-                handleRegister={handleRegister} // Ensure this is passed here
+                handleRegister={handleRegister} 
                 handleLogin={handleLogin}
                 nextStep={() => setFormStep(prev => prev + 1)}
                 prevStep={() => setFormStep(prev => prev - 1)}
@@ -209,7 +225,7 @@ const HomePage = () => {
         </section>
       )}
 
-      {/* Message Modal to display messages */}
+      {/* Message Modal */}
       <MessageModal message={message} onClose={() => setMessage('')} />
     </main>
   );
