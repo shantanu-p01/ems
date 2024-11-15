@@ -130,7 +130,7 @@ const ProfilePage = () => {
           <p>User not logged in. Redirecting to homepage in {redirectCountdown}...</p>
         </div>
       ) : (
-        <div className="max-w-lg -z-10 w-full bg-[#212121] p-4 rounded shadow-lg">
+        <div className="max-w-lg w-full bg-[#212121] p-4 rounded shadow-lg">
           <h1 className="text-3xl font-semibold text-center mb-6 text-white">Profile</h1>
           <div className="flex flex-col md:flex-row items-center justify-center md:space-x-4 mb-4 relative">
           <div className="flex flex-col md:flex-row items-center justify-center md:space-x-4 mb-4 relative">

@@ -8,16 +8,17 @@ const jwt = require('jsonwebtoken');
 const os = require('os');
 const moment = require('moment-timezone');
 const axios = require('axios');
-const fileUpload = require('express-fileupload'); // Middleware for file uploads
-const FormData = require('form-data'); // Import FormData for multipart uploads
+const fileUpload = require('express-fileupload');
+const FormData = require('form-data');
+const cron = require('node-cron'); // Add cron for background tasks
 
 dotenv.config();
 const app = express();
-const JWT_SECRET = process.env.JWT_SECRET; // Set this in your .env file
+const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN, methods: ['GET', 'POST'] }));
 app.use(bodyParser.json());
-app.use(fileUpload()); // Enable file uploads
+app.use(fileUpload());
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -32,6 +33,7 @@ const userSchema = new mongoose.Schema({
   mongodbUrl: { type: String, required: true },
   loginToken: { type: String, default: null },
   loginStatus: { type: Boolean, default: false },
+  tokenExpiration: { type: Date, default: null }, // Add token expiration field
   last_logged_in_on: { type: Object, default: null }, // Store time in both IST and GMT
   login_times: { type: Number, default: 0 },
   last_logged_in_ip: { type: String, default: null }, // Store the user's public IP
@@ -88,6 +90,7 @@ app.post('/api/login', async (req, res) => {
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
   user.loginToken = token;
   user.loginStatus = true;
+  user.tokenExpiration = moment().add(1, 'hour').toDate(); // Store token expiration time
   user.login_times += 1;
 
   const istTime = moment().tz("Asia/Kolkata").format("DD-MMM-YYYY HH:mm:ss");
@@ -104,6 +107,20 @@ app.post('/api/login', async (req, res) => {
     message: 'Login successful',
     token,
     name: user.name,
+  });
+});
+
+// Middleware to clear expired tokens
+cron.schedule('*/5 * * * *', async () => {
+  const now = new Date();
+  const expiredUsers = await User.find({ tokenExpiration: { $lt: now }, loginToken: { $ne: null } });
+
+  expiredUsers.forEach(async (user) => {
+    user.loginToken = null;
+    user.loginStatus = false;
+    user.tokenExpiration = null;
+    await user.save();
+    console.log(`User ${user.email} logged out due to token expiration.`);
   });
 });
 
