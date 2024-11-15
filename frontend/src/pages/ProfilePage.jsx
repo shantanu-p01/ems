@@ -12,6 +12,8 @@ const ProfilePage = () => {
   const [editableFields, setEditableFields] = useState({ name: false, position: false, bio: false, profileImage: false });
   const [formStatus, setFormStatus] = useState('');
   const [loading, setLoading] = useState(true); // Loading state for API call
+  const [imageUploading, setImageUploading] = useState(false); // Loader for image upload
+  const [profileUpdating, setProfileUpdating] = useState(false); // Loader for profile update
   const [redirectCountdown, setRedirectCountdown] = useState(5);
   const [showRedirectMessage, setShowRedirectMessage] = useState(false);
   const [originalData, setOriginalData] = useState({ name: '', email: '', position: '', bio: '', profileImage: '' });
@@ -39,7 +41,6 @@ const ProfilePage = () => {
         }
       })
       .catch((error) => {
-        // console.error("Error fetching profile:", error);
         if (error.response && error.response.data.error === 'Token mismatch. Redirecting to homepage...') {
           // Token mismatch, handle redirect
           setShowRedirectMessage(true);
@@ -82,7 +83,10 @@ const ProfilePage = () => {
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (file && (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/gif")) {
+    // Check if file is an image (JPG, PNG, or GIF)
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (file && validImageTypes.includes(file.type)) {
+      setImageUploading(true); // Show image upload loader
       const uploadData = new FormData();
       uploadData.append("image", file);
 
@@ -103,6 +107,8 @@ const ProfilePage = () => {
       } catch (error) {
         console.error("Error uploading image:", error);
         setFormStatus("Error uploading image.");
+      } finally {
+        setImageUploading(false); // Hide image upload loader
       }
     } else {
       setFormStatus("Please select a valid image (JPG, PNG, or GIF).");
@@ -118,6 +124,7 @@ const ProfilePage = () => {
 
     const token = Cookies.get('token');
     if (token) {
+      setProfileUpdating(true); // Show profile update loader
       axios.post(`${SERVER_ADDRESS}/api/updateProfile`, formData, { headers: { Authorization: `Bearer ${token}` } })
         .then(response => {
           if (response.data.success) {
@@ -128,7 +135,8 @@ const ProfilePage = () => {
             setFormStatus('Failed to update profile.');
           }
         })
-        .catch(() => setFormStatus('Error updating profile.'));
+        .catch(() => setFormStatus('Error updating profile.'))
+        .finally(() => setProfileUpdating(false)); // Hide profile update loader
     }
   };
 
@@ -147,32 +155,32 @@ const ProfilePage = () => {
       ) : (
         <div className="max-w-lg w-full bg-[#212121] p-4 rounded shadow-lg">
           <h1 className="text-3xl font-semibold text-center mb-6 text-white">Profile</h1>
-          <div className="flex flex-col md:flex-row items-center justify-center md:space-x-4 mb-4 relative">
-          <div className="flex flex-col md:flex-row items-center justify-center md:space-x-4 mb-4 relative">
-            <label htmlFor="imageUpload" className="size-28 rounded-full overflow-hidden border-2 border-gray-200 relative group cursor-pointer">
-              {formData.profileImage ? (
-                <img
-                  src={formData.profileImage}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500">
-                  <img src="placeholder.png" alt="Profile" className="w-full h-full object-cover" />
+          <div className="flex flex-col md:flex-row items-center justify-center md:space-x-4 relative">
+            <div className="flex flex-col md:flex-row items-center justify-center md:space-x-4 relative">
+              <label htmlFor="imageUpload" className="size-28 rounded-full overflow-hidden border-2 border-gray-200 relative group cursor-pointer">
+                {formData.profileImage ? (
+                  <img
+                    src={formData.profileImage}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-500">
+                    <img src="placeholder.png" alt="Profile" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center opacity-0 group-hover:opacity-100 transition duration-300">
+                  <FaPen className="text-white text-2xl" />
                 </div>
-              )}
-              <div className="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center opacity-0 group-hover:opacity-100 transition duration-300">
-                <FaPen className="text-white text-2xl" />
-              </div>
-            </label>
-            <input
-              type="file"
-              id="imageUpload"
-              accept=".jpg, .jpeg, .png, .gif"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-          </div>
+              </label>
+              <input
+                type="file"
+                id="imageUpload"
+                accept=".jpg, .jpeg, .png, .gif"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+            </div>
             <div className="text-white w-full md:w-2/3">
               <div className="flex items-center justify-between">
                 <label htmlFor="name" className="text-sm">Name</label>
@@ -181,7 +189,6 @@ const ProfilePage = () => {
                 </button>
               </div>
               <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full mb-2 p-2 border border-gray-300 rounded-md" disabled={!editableFields.name} />
-
               <div className="flex items-center justify-between">
                 <label htmlFor="position" className="text-sm">Position</label>
                 <button type="button" onClick={() => toggleFieldEdit('position')} className={`text-sm ${editableFields.position ? 'text-red-500 hover:text-red-600' : 'text-blue-500 hover:text-blue-700'}`}>
@@ -216,6 +223,21 @@ const ProfilePage = () => {
           </form>
         </div>
       )}
+
+      {/* Loader for image upload */}
+      {imageUploading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 backdrop-blur-sm flex justify-center items-center">
+          <BarLoader width={100} color="#ffffff" />
+        </div>
+      )}
+
+      {/* Loader for profile update */}
+      {profileUpdating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 backdrop-blur-sm flex justify-center items-center">
+          <BarLoader width={100} color="#ffffff" />
+        </div>
+      )}
+
       <MessageModal message={formStatus} onClose={() => setFormStatus('')} />
     </div>
   );
