@@ -24,7 +24,7 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="fixed z-20 w-screen h-16 select-none">
+      <header className="fixed z-20 min-w-screen w-screen h-16 select-none">
         <nav className="w-full bg-[#212121] h-16 px-4 sm:pr-8 flex items-center justify-between">
           {/* Left side (logo) */}
           <h1 className="p-2 MonoBold rounded-lg text-4xl transition-all duration-300 hover:scale-110 cursor-pointer">E-M-S</h1>

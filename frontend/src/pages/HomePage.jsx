@@ -31,6 +31,7 @@ const HomePage = () => {
   };
 
   useEffect(() => {
+    document.title = "EMS";
     const token = Cookies.get('token');
     if (token) {
       axios.post(`${SERVER_ADDRESS}/api/verify-token`, {}, {

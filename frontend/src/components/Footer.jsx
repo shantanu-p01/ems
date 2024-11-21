@@ -45,7 +45,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="select-none bg-[#212121] p-4 text-white">
+    <footer className="select-none min-w-screen w-screen bg-[#212121] p-4 text-white">
       {/* Footer Title */}
       <h1 className="text-3xl font-bold text-center mb-4">Employee Management System</h1>
 
