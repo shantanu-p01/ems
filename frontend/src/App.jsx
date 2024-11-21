@@ -6,7 +6,6 @@ import HomePage from "./pages/HomePage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import ErrorPage from "./pages/ErrorPage.jsx";
-import FirstPage from "./components/FirstPage.jsx";
 import { Scrollbars } from "react-custom-scrollbars-2";
 import BarLoader from "react-spinners/BarLoader"; // Import the loader
 
