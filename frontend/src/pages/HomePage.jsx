@@ -113,10 +113,6 @@ const HomePage = () => {
     }
   };
   
-  
-
-
-
   const handleLogout = async () => {
     setLoadingState(true); // Show loader
     try {
@@ -164,7 +160,7 @@ const HomePage = () => {
   }, [formStep, isLoggedIn]);
 
   return (
-    <main className="min-h-screen min-w-full flex flex-col items-center pt-20 pb-10 bg-gray-900 text-gray-200">
+    <main className="h-[calc(100vh-64px)] w-full flex flex-col items-center md:pt-20 pb-10 text-gray-200">
       {/* Show loader during login/logout/register */}
       {(loading || loadingState) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center backdrop-blur-sm">
@@ -174,28 +170,19 @@ const HomePage = () => {
       
       {/* Main Content */}
       {!loading && !loadingState && (
-        <section className="w-11/12 sm:w-4/5 bg-gray-800 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between mb-12 shadow-lg">
-          <div className="sm:w-1/2 text-center sm:text-left mb-6 sm:mb-0">
-            {isLoggedIn ? (
-              <>
-                <h1 className="text-4xl font-bold text-white">Welcome, <span className="text-green-400">{name}</span>!</h1>
-                <button
-                  onClick={handleLogout}
-                  className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <h1 className="text-4xl font-bold text-white">Welcome to <span className="text-red-600">E</span>MS!</h1>
-                <p className="text-lg text-gray-400 mt-2">Manage your team efficiently and effectively</p>
-              </>
-            )}
-          </div>
-
-          <div className="w-full sm:w-1/2 bg-gray-700 rounded-lg shadow-md">
-            {!isLoggedIn && (
+        <section className="w-11/12 sm:w-4/5 rounded-lg flex flex-col items-center justify-center">
+          {isLoggedIn ? (
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-white">Welcome, <span className="text-green-400">{name}</span>!</h1>
+              <button
+                onClick={handleLogout}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="w-full rounded-lg">
               <Auth
                 formStep={formStep} 
                 setFormStep={setFormStep}
@@ -221,8 +208,8 @@ const HomePage = () => {
                   step === 4 ? mongodbUrl && passphrase : false
                 }
               />
-            )}
-          </div>
+            </div>
+          )}
         </section>
       )}
 

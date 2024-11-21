@@ -142,19 +142,31 @@ const Auth = ({
   ];
 
   return (
-    <div className="bg-gray-800 p-8 rounded-lg shadow-lg">
-      {formContent.find(form => form.step === formStep)?.content}
-
-      <div className="mt-6 flex justify-center">
-        <p className="text-gray-400 text-center">
-          {formStep === 1 ? (
-            <>Don't have an account? <span onClick={() => setFormStep(2)} className="text-blue-500 cursor-pointer hover:underline ml-2">Register</span></>
-          ) : (
-            <>Already have an account? <span onClick={() => setFormStep(1)} className="text-blue-500 cursor-pointer hover:underline ml-2">Login</span></>
-          )}
-        </p>
+    <main className="h-full w-full flex flex-col md:flex-row justify-center gap-5 items-center p-2">
+      {/* Left Div with Image */}
+      <div className="w-[90%] md:w-[45%] h-[90%] flex items-center justify-center m-auto">
+        <img
+          src="/emsPG1.png" // Accessing image from the public directory
+          alt="EMS"
+          className="w-full h-full object-contain"
+        />
       </div>
-    </div>
+
+      {/* Right Div with Dark-Themed Login Form */}
+      <div className="md:w-1/2 h-full flex items-center justify-center">
+        <div className="w-full max-w-lg bg-gray-900 rounded-lg shadow-lg p-8">
+          {formContent.find(form => form.step === formStep)?.content}
+
+          <div className="mt-6 text-center text-gray-400">
+            {formStep === 1 ? (
+              <>Don't have an account? <span onClick={() => setFormStep(2)} className="text-blue-500 cursor-pointer hover:underline ml-2">Register</span></>
+            ) : (
+              <>Already have an account? <span onClick={() => setFormStep(1)} className="text-blue-500 cursor-pointer hover:underline ml-2">Login</span></>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
   );
 };
 
